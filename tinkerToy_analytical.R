@@ -165,10 +165,18 @@ networkOrderCount<-function(network){
 }
 
 # function to add random lakes to a network
-addRandomLake<-function(network,order,width,depth,lake_d=0.005,verbose=FALSE){
+addRandomLake<-function(network,order,area,depth,lake_d=0.005,verbose=FALSE){
+  # ARGUMENTS
+  # network:  network to add lakes to
+  # order: vector of order streams you'd like to convert to lakes
+  # area: desired area (m2) of lakes you'll be adding
+  # depth: desired depth (m) of lakes you'll be adding
+  # lake_d: decay rate of solute in a lake (d-1)
+  # verbose: print out changes made
+  
   # make sure width and depth are the same length as order, if not repeat what is supplied to make same length
-  if(length(width)<length(order)){
-    width=rep(width,length.out=length(order))
+  if(length(area)<length(order)){
+    area=rep(area,length.out=length(order))
   }
   if(length(depth)<length(order)){
     depth=rep(depth,length.out=length(order))
@@ -190,7 +198,7 @@ addRandomLake<-function(network,order,width,depth,lake_d=0.005,verbose=FALSE){
       if(toChangeCount[i]<networkOrderCount[i]){
         # randomly select desired number of reaches of order i to turn into lakes by setting width, depth, and d to values passed as arguments
         toChange=sample((1:nrow(network))[network$order==names(toChangeCount)[i]],toChangeCount[i],replace=FALSE)
-        newNet$width[toChange]=width[order==names(toChangeCount)[i]]
+        newNet$width[toChange]=area[order==names(toChangeCount)[i]]/network$length[toChange]
         newNet$depth[toChange]=depth[order==names(toChangeCount)[i]]
         newNet$d[toChange]=lake_d
         newNet$lake[toChange]=1
@@ -200,7 +208,7 @@ addRandomLake<-function(network,order,width,depth,lake_d=0.005,verbose=FALSE){
       # if there are NOT enough order i reaches to make the desired number of lakes, change all of them and print warning if verbose is TRUE 
       }else{
         toChange=(1:nrow(network))[network$order==names(toChangeCount)[i]]
-        newNet$width[toChange]=width[order==names(toChangeCount)[i]]
+        newNet$width[toChange]=area[order==names(toChangeCount)[i]]/network$length[toChange]
         newNet$depth[toChange]=depth[order==names(toChangeCount)[i]]
         newNet$d[toChange]=lake_d
         newNet$lake[toChange]=1
