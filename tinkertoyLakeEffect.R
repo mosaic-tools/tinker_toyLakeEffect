@@ -4,7 +4,7 @@
 source("tinkerToy_analytical.R")
 
 # load stream-only network (Savannah river out of NHD)
-NHDout=read.csv("savannah_river_no1_v2.csv",stringsAsFactors=FALSE)
+NHDout=read.csv("savannah_river_v2.csv",stringsAsFactors=FALSE)
 
 # scaling relationship between discharge and width from Raymond et al. 2012 "scaling the gas transfer velocity and hydraulic geometry on streams and small rivers"
 a=12.88
@@ -51,21 +51,19 @@ network$connect=gsub(" ","",network$connect,fixed=TRUE)
 network$connect=gsub(":",",",network$connect,fixed=TRUE)
 network$connect[is.na(network$connect)]=0
 
-# subtracting 1 from order because we removed first order streams
-#network$order=network$order-1
-
-# because we removed true headwater streams we need to include their contributing area
-# in the contributing area of true 2nd order (our headwater streams)
-#network$localArea[network$order==1]=NHDout$TotDASqKM[network$order==1]*1e6
+# fill in NHD reaches with  a discharge (QE_MA) of 0
+meanWidth_firstorder=mean(network$width[network$order==1 & network$width>0])
+meanDepth_firstorder=mean(network$depth[network$order==1 & network$depth>0])
+network$width[network$width==0]=meanWidth_firstorder
+network$depth[network$depth==0]=meanDepth_firstorder
 
 # sort network
-#sorted=sortNetwork(network)
-#write.csv(sorted,"SORTED_savannah_river_no1_v2.csv",row.names=FALSE)
-sorted=read.csv("SORTED_savannah_river_no1_v2.csv",header=TRUE,stringsAsFactors=FALSE)
+#sorted=sortNetwork(network=network,counterMax=1000,verbose=TRUE)
+#write.csv(sorted,"SORTED_savannah_river_v2.csv",row.names=FALSE)
+sorted=read.csv("SORTED_savannah_river_v2.csv",header=TRUE,stringsAsFactors=FALSE)
 
 # solve equilibrium for base network
 baseProcess=solveNetwork(network=sorted)
-
 
 #*******************************#
 #   Running model experiments   #
