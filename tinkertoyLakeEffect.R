@@ -69,6 +69,11 @@ baseProcess=solveNetwork(network=sorted)
 #   Running model experiments   #
 #*******************************#
 
+
+# looking at effect of lake number in network with random location and constant size (but multiple scenarios of size)
+lakeNumbers=c(10,50,100,500,1000,5000)
+lakeSizes=
+
 # add 40 lakes to 6th order streams
 lakes40=addRandomLake(network=sorted,order=rep(6,40),width=10000,depth=10,lake_d=0.005,verbose=TRUE)
 
