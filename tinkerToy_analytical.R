@@ -159,6 +159,100 @@ solveNetwork<-function(network){
     return(list(network=network,C=C,CConc=CConc,reachSummary=reachSummary,networkSummary=networkSummary))
 }
 
+
+solveNetwork_wcsed<-function(network){ 
+  #arguments
+  # network - a SORTED network data frame
+  
+  # would be good to add check to be sure network is sorted and if not throw an error
+  
+  
+  #Define number of reaches
+  nReaches <- nrow(network)
+  #Define length of each reach (m)
+  length <- network$length
+  #Define width  of each reach (m)
+  width <- network$width
+  #Define depth of each reach (m)
+  depth <- network$depth
+  #Define volume of each reach (m3)
+  V <- length*width*depth
+  #Define area of each reach (m2)
+  A <- length*width
+  #Define local watershed inflows (m3 d-1)
+  qL <- network$localArea*network$localPET
+  #Define local watershed carbon concentrations (g m-3)
+  cL <- network$localCin
+  #Define network inflows  (m3 d-1)
+  qN <- rep(0,nReaches)
+  #Define carbon loads from upstream network (g d-1)
+  qcN <- rep(0,nReaches)
+  #Define reach hydraulic load
+  Hl=(qL+qN)/A
+  #Define aggregate water column and sediment decay rates (d-1)
+  d <- network$d+network$vF/depth
+  
+  C=numeric(nrow(network))
+  for(i in 1:nrow(network)){
+    #calculate flows from upstream network
+    donors=which(network$reachID%in%unlist(strsplit(network$connect[i],",")))
+    if(length(donors)>0){
+      qN[i]=sum(qL[donors])+sum(qN[donors])
+      qcN[i]=sum((qL[donors]+qN[donors])*C[donors]/V[donors])
+    }
+    
+    #state variable C is mass of carbon in the reach, g C
+    #q is flow, m3 d-1
+    #c is concentration of carbon, g m-3
+    #L subscript denotes local inputs from the immediate watershed of a reach
+    #N subscript denotes network inputs from all of the upstream watershed of a reach, not including immediate watershed
+    #d is decay rate, d-1
+    C[i]=(qL[i]*cL[i]+qcN[i])/(d[i]+(qL[i]+qN[i])/V[i])
+  }
+  
+  #Calculate concentrations in each reach
+  CConc <- C/V
+  
+  #What is the total carbon export from the bottom of the network? (g d-1)
+  COut <- C[nReaches]/V[nReaches]*(qN[nReaches]+qL[nReaches])
+  
+  #What was the total carbon input?
+  CIn <- sum(cL*qL)
+  
+  #Fraction of C processed
+  CLost <- (1-COut/CIn)
+  
+  #For each reach, what was carbon export?
+  COutReach <- C/V*(qN+qL)
+  
+  #For each reach, what was the carbon input?
+  CInReach <- qL*cL + qcN
+  
+  #For each reach, what was the fraction of C processed/lost
+  CLostReach <- (1-COutReach/CInReach)
+  
+  #Residence times
+  resTimeReach <- V/(qL+qN)
+  
+  resTime <- sum(V)/(qL[nReaches]+qN[nReaches])  # NOT SURE THIS WORKS
+  
+  #Respiration rate in each reach (g m-2 d-1)
+  respReach <- d*C/A
+  
+  #C spiraling length (m)
+  spiralC <- (qN+qL)*(C/V)/(respReach*width)
+  
+  #C uptake velocity (m d-1)
+  vF <- respReach/(C/V)
+  
+  #Summary
+  reachSummary <- data.frame(length,width,depth,V,qL,qN,resTimeReach,d,cL,CInReach,COutReach,CLostReach,C=C,CConc=CConc,respReach,spiralC,vF)
+  networkSummary <- list(V=sum(V),resTime=resTime,CIn=CIn,COut=COut,CLost=CLost)
+  
+  
+  return(list(network=network,C=C,CConc=CConc,reachSummary=reachSummary,networkSummary=networkSummary))
+}
+
 # function to generate count of reaches of each order in a network
 networkOrderCount<-function(network){
   return(table(c(network$order,1:max(network$order)))-1)
