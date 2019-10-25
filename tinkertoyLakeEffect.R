@@ -37,9 +37,10 @@ network=data.frame(reachNumber=1:nrow(NHDout),
                   width=a*(NHDout$QE_MA*0.0283)^b, 
                   depth=c*(NHDout$QE_MA*0.0283)^d, 
                   localArea=NHDout$AreaSqKM*1e6, 
-                  localPET=0.005, 
+                  localPET=0.0012, 
                   localCin=10, 
-                  d=0.1, 
+                  d=0.005,
+                  vF=0.1,
                   connect=NHDout$fromCOMID,
                   order=NHDout$StreamOrde,
                   lake=0)
@@ -57,13 +58,17 @@ meanDepth_firstorder=mean(network$depth[network$order==1 & network$depth>0])
 network$width[network$width==0]=meanWidth_firstorder
 network$depth[network$depth==0]=meanDepth_firstorder
 
+# fill first order localAreas that are missing with average of all other firstorder
+network$localArea[network$localArea==0 & network$order==1]=mean(network$localArea[network$localArea>0 & network$order==1])
+
+
 # sort network
 #sorted=sortNetwork(network=network,counterMax=1000,verbose=TRUE)
 #write.csv(sorted,"SORTED_savannah_river_v2.csv",row.names=FALSE)
 sorted=read.csv("SORTED_savannah_river_v2.csv",header=TRUE,stringsAsFactors=FALSE)
 
 # solve equilibrium for base network
-baseProcess=solveNetwork(network=sorted)
+baseProcess=solveNetwork_wcsed(network=sorted)
 
 #*******************************#
 #   Running model experiments   #
@@ -71,11 +76,34 @@ baseProcess=solveNetwork(network=sorted)
 
 
 # looking at effect of lake number in network with random location and constant size (but multiple scenarios of size)
-lakeNumbers=c(10,50,100,500,1000,5000)
-lakeSizes=
+lakeNumbers=c(100,250,500,1000,2500,5000)
+lakeSizes=c(1e4,1e6,1e8)
+reps=20
+
+storeLN=array(NA,c(length(lakeNumbers),length(lakeSizes),reps))
+for(i in 1:length(lakeNumbers)){
+  for(j in 1:length(lakeSizes)){
+    for(k in 1:reps){
+      print(paste(i,j,k))
+      cur=addRandomLake(network=sorted,order=sample(sorted$order,lakeNumbers[i]),area=lakeSizes[j],depth=10,lake_d=0.005,verbose=FALSE)
+      curSolve=solveNetwork(network=cur)
+      storeLN[i,j,k]=curSolve$networkSummary$CLost
+    }
+  }
+}
+
+boxplot(as.vector(storeLN[,1,])~rep(lakeNumbers,20),ylim=c(0,1),ylab="fraction C lost",xlab="number of lakes",pch=1,xlim=c(0,6.5))
+boxplot(as.vector(storeLN[,2,])~rep(lakeNumbers,20),add=TRUE)
+boxplot(as.vector(storeLN[,3,])~rep(lakeNumbers,20),add=TRUE)
+
+#sensitivity to Cin varying with stream order
+#sensitive to d varying with stream order
+
+# looking at lake location
+
 
 # add 40 lakes to 6th order streams
-lakes40=addRandomLake(network=sorted,order=rep(6,40),width=10000,depth=10,lake_d=0.005,verbose=TRUE)
+lakes40=addRandomLake(network=sorted,order=rep(6,40),area=10000,depth=10,lake_d=0.005,verbose=TRUE)
 
 # solve equilibrium for base network
 lakes40Process=solveNetwork(network=lakes40)
