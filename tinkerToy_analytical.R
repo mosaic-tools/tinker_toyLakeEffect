@@ -17,6 +17,24 @@
 #   connect: the other reaches that directly flow into this reach; if none use 0, if multiple separate with commas
 # this information is passed to the function as a dataframe with a row per reach and the above columns with those names
 
+
+sortNetwork_HD <- function(df) {
+  library(dplyr)
+  df = df %>% arrange(connect) #could do this outside of this function. But speeds up loop considerably!
+  
+  for (i in 1:nrow(df)) {
+    # print(i)
+    repeat{
+      if (df$connect[i] == 0) {break} #first order streams at top
+      #check for upstream reaches lower in the table. If none break loop
+      if (!any(unlist(strsplit(df$connect[i],",")) %in% df$reachID[i:nrow(df)])) {break} 
+      df = bind_rows(slice(df,-i), slice(df,i)) #put row at bottom, and repeat
+    }
+  }
+  print("The network sorted!")
+  return(df)
+}
+
 sortNetwork<-function(network, counterMax=200,verbose=FALSE){
   # arguments
   # network - setup dataframe for network as described above
